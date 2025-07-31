@@ -1,231 +1,177 @@
+# RWKV Dataset GUI
 
-<h1 align="center">
-  <p><img src="assert/logo.jpg" alt="RWKV-PEFT" width="60px"  style="vertical-align: middle; margin-right: 10px;"/>RWKV-PEFT</p>
-</h1>
+一个用于RWKV模型数据集处理的图形化界面工具，支持多种数据格式处理、小说增强处理和数据格式转换。
 
-\[ English | [中文](README_zh.md) \]
+## 功能特性
 
-RWKV-PEFT is the official implementation for efficient parameter fine-tuning of RWKV models, supporting various advanced fine-tuning methods across multiple hardware platforms.
+### 1. 通用数据处理
+- **多种数据格式支持**：
+  - 单轮问答
+  - 多轮对话
+  - 指令问答
+  - 长文本处理
+  - 带标题文章
+  - 小说续写
+  - 章节扩展
 
-# Recent updates
-## Support v7 & Code adjustment
- - 1.Removed `--fla` and added `--op cuda/fla/triton`. In RWKV7, you can choose from three different operators, with CUDA recommended by default. If you want to fine-tune using state tuning, please enable `--op fla` and set `--train_type state`.
- - 2.Renamed Bone to DiSHA(Note: The rank parameter in DiSHA is only half of that in LoRA. Under the same parameter setting, DiSHA(r) = 2 * LoRA(r)).:  
-``` disha_config='{"mode":"bone","load":"","r":64}' ```  
-You can still choose either `bone` or `bat` in the `mode` field.
-- 3.The model code is now clearer and easier to migrate. Check the `rwkvt` file for details.
-- 4.Removed the basic visualization training. A dedicated program will support visualization training in the future.
-- 5.Added lr_schedule, with cos_decay as the default. You can also use cosine annealing by setting --lr_schedule wsd.
-``` --my_testing "x070" ```
-## SFT
-Relevant parameters, detailed usage reference: scripts/run_sft.sh  
-- data_file 'meta-math/MetaMathQA' #You can directly choose the Hugging Face path, or you can choose your own JSON path.  
-- data_type sft #Select data type  
-- sft_field query response #Perform retrieval based on the question-and-answer format in the JSON.  
-- sft_split "train" #Set the number of data to load: "train" loads all the data, while "train[:1000]" loads only the first 1000 samples.  
-```
---data_type sft --sft_field query response --sft_split "train"
-```
-## Specific settings for SFT
-### RWKV-PEFT/src/rwkv_datasets/SFTdataset.py
-```
-tokenizer_path = 'RWKV/rwkv-5-world-3b' #Choose a tokenizer (select the official tokenizer)
-IGNORE_INDEX = -100 #Padding (do not modify)
-EOT_TOKEN = "\x17" #Set the stop token(s) you need
+- **灵活的输入方式**：
+  - 单文件上传
+  - 目录批量处理
 
-# Modify the corresponding prompt according to your requirements
-PROMPT = (
-        "Below is an instruction that describes a task. "
-        "Write a response that appropriately completes the request.\n\n"
-        "### Instruction:\n{instruction}\n\n### Response:"
-    )
-```
-> [!TIP]
-> Downloading Hugging Face data may time out in China, so you need to add:   
->```HF_ENDPOINT="https://hf-mirror.com" sh scripts/run_sft.sh```
+### 2. 小说类增强处理
+- **智能文本处理**：
+  - 自定义段落长度控制（最小/最大长度）
+  - 智能段落分割
+  - 文本清理和格式化
 
-## DiSHA: Dimension-Sharding Adaptation of Large Language Models with Fast Convergence and Fast Computation [Paper](https://arxiv.org/pdf/2409.15371)
-The paper has been updated. DiSHA(Bone) is now a simple and efficient basic PEFT method that is faster and uses less VRAM than LoRA, converges faster, and performs better than PiSSA. 
-scripts:  
-DiSHA(Bone):``` disha_config='{"mode":"bone","load":"","r":64}' ``` 
-DiSHA(Bat):``` disha_config='{"mode":"bat","load":"","r":64}' ```
+- **AI增强功能**：
+  - 支持自定义OpenAI类型API接口（如vLLM服务）
+  - AI关键词提取
+  - 自定义指令模板
+  - 可配置API URL和模型名称
 
+- **段落编辑功能**：
+  - JSONL文件导入和编辑
+  - 段落统计信息显示
+  - 批量选择/取消选择段落
+  - 删除选中段落
+  - AI重新生成关键词
+  - 段落内容预览和编辑
 
-# Installation
+### 3. 数据格式转换
+- **JSONL到BinIdx转换**：
+  - 支持RWKV训练格式转换
+  - 自定义输出路径
+  - 多种分词器支持
 
-> [!IMPORTANT]
-> Installation is mandatory.
+## 安装和使用
 
+### 环境要求
+- Python 3.8+
+- 所需依赖包（见requirements.txt）
+
+### 安装步骤
+
+1. 克隆项目：
 ```bash
-git clone https://github.com/JL-er/RWKV-PEFT.git
-cd RWKV-PEFT
-pip install -r requirements.txt
+git clone <repository-url>
+cd RWKV-PEFT-GUI
 ```
 
-## Web Run
-> [!TIP]
-> Coming Soon!
-
-## Table of Contents
-- [Hardware Requirements](#hardware-requirements)
-- [Quick Start](#quick-start)
-- [Main Features](#main-features)
-- [Detailed Configuration](#detailed-configuration)
-- [GPU Support](#gpu-support)
-- [Citation](#citation)
-
-## Hardware Requirements
-
-### RWKV-7 Models
-
-Below is the RWKV-7 model fine-tuned video memory requirement data, tested with RTX 4090 (24GB video memory) + 64GB RAM, based on the following parameter configurations:
-
-- Training precision: BF16
-- `--strategy deepspeed_stage_1`
-- `--ctx_len 1024`
-- `--micro_bsz 1`
-- `--lora_r 64` or `disha_config='{"mode":"bone","r":32}'`
-
-| Model Parameters | State Tuning | LoRA | DiSHA | PiSSA |
-|------------------|--------------|------|-------|-------|
-| RWKV7-0.1B       | 2.6 GB       | 2.7 GB  | 2.7 GB   | 2.6 GB   |
-| RWKV7-0.4B       | 3.1 GB       | 3.4 GB  | 3.1 GB   | 3.4 GB   |
-| RWKV7-1.5B       | 5.3 GB       | 5.6 GB  | 5.6 GB   | 5.6 GB   |
-| RWKV7-3B         | 8.2 GB       | 8.8 GB  | 8.8 GB   | 8.8 GB   |
-
-<details>
-<summary>🔍 <b>Click to view the VRAM requirements for quantized training of RWKV-7 models</b> </summary>
-
-### INT8 VRAM Requirements
-
-| Model Parameters | State Tuning | LoRA | DiSHA | PiSSA |
-|------------------|--------------|------|-------|-------|
-| RWKV7-0.1B       | 2.4 GB       | 2.5 GB  | 2.5 GB   | 2.5 GB   |
-| RWKV7-0.4B       | 2.9 GB       | 2.9 GB  | 2.9 GB   | 3.0 GB   |
-| RWKV7-1.5B       | 4.1 GB       | 4.6 GB  | 4.5 GB   | 4.6 GB   |
-| RWKV7-3B         | 5.7 GB       | 6.7 GB  | 6.7 GB   | 6.7 GB   |
-
-### NF4 VRAM Requirements
-
-| Model Parameters | State Tuning | LoRA | DiSHA | PiSSA |
-|------------------|--------------|------|-------|-------|
-| RWKV7-0.1B       | 2.5 GB       | 2.4 GB  | 2.4 GB   | 2.4 GB   |
-| RWKV7-0.4B       | 2.8 GB       | 2.7 GB  | 2.7 GB   | 2.7 GB   |
-| RWKV7-1.5B       | 3.7 GB       | 3.9 GB  | 3.9 GB   | 3.9 GB   |
-| RWKV7-3B         | 4.7 GB       | 5.7 GB  | 5.7 GB   | 5.7 GB   |
-
-</details>
-
-<details>
-<summary>🔍 <b>Click to view the VRAM requirements of RWKV-6 models</b> </summary>
-
-
-The following shows memory usage when using an RTX 4090 (24GB VRAM) + 64GB RAM (with parameters: `--strategy deepspeed_stage_1 --ctx_len 1024 --micro_bsz 1 --lora_r 64`):
-
-|   Model Size   | Full Finetuning | LoRA/PISSA | QLoRA/QPISSA | State Tuning |
-|---------------|-----------------|------------|--------------|--------------|
-| RWKV6-1.6B    | OOM            | 7.4 GB      | 5.6 GB        | 6.4 GB        |
-| RWKV6-3B      | OOM            | 12.1 GB     | 8.2 GB        | 9.4 GB        |
-| RWKV6-7B      | OOM            | 23.7 GB*    | 14.9 GB**     | 18.1 GB       |
-
-Note:
-* OOM when batch size is 8
-** Requires 19.5GB VRAM when batch size is 8
-
-</details>
-
-## Quick Start
-
-1. Install dependencies:
+2. 安装依赖：
 ```bash
 pip install -r requirements.txt
 ```
 
-2. Run example script:
+3. 确保json2binidx_tool目录存在且包含必要文件：
+   - `rwkv_vocab_v20230424.txt`
+   - `preprocess_data.py`
+
+### 启动应用
+
 ```bash
-sh scripts/run_lora.sh
-```
-Note: Please refer to the RWKV official tutorial for detailed data preparation
-
-
-## Main Features
-
-- **Multiple Fine-tuning Methods**: Supports LoRA, PISSA, Bone, State Tuning, etc.
-- **Quantized Training**: Supports INT8/NF4 quantization for significant VRAM reduction
-- **Flexible Data Loading**: Supports various data sampling strategies 
-- **Memory Optimization**: Multiple DeepSpeed strategies available
-- **Loss Masking**: Supports loss masking for QA dialogue and padding
-- **Infinite Context Training**: Supports infctx training mode, utilizing RWKV's constant memory usage advantage to train with "infinite" context under limited resources
-- **Multi-Hardware Support**: RWKV-PEFT officially supports NVIDIA, AMD, Moore Threads, Musa, Iluvatar CoreX, and other hardware platforms. Ascend NPU implementation will be available later. Note: Currently we only support issues for NVIDIA hardware
-- **RWKV-FLA Efficient Training**: rwkv-fla is a Triton-based linear attention operator that can run efficiently on hardware without CUDA support
-
-## Detailed Configuration
-
-### 1. PEFT Method Selection
-```bash
---peft disha --disha_config $disha_config
+python rwkv_dataset_gui.py
 ```
 
-### 2. Training Parts Selection
-```bash
---train_parts ["time", "ln"]
-```
-- Available parts: emb, head, time, ln
-- Default training: time, ln (small parameter ratio)
+应用将在 `http://127.0.0.1:7863` 启动。
 
-### 3. Quantized Training
-```bash
---quant int8/nf4
-```
+## 使用说明
 
-### 4. Infinite Length Training (infctx)
-```bash
---train_type infctx --chunk_ctx 512 --ctx_len 2048
-```
-- ctx_len: Target training length
-- chunk_ctx: Slice length, must be smaller than ctx_len
+### 通用数据处理
+1. 选择输入方式（文件上传或目录处理）
+2. 选择数据格式
+3. 可选：设置系统提示词
+4. 点击"开始处理"按钮
+5. 查看处理结果和预览
+6. 下载生成的JSONL文件
 
-### 5. Data Loading Strategy
-```bash
---dataload pad
-```
-- get: Default random sampling (RWKV-LM style)
-- pad: Fixed-length padding sampling
-- only: Single data sampling (only supports bsz=1)
+### 小说增强处理
 
-### 6. DeepSpeed Strategy
-```bash
---strategy deepspeed_stage_1
-```
-Available strategies:
-- deepspeed_stage_1: Preferred option
-- deepspeed_stage_2/3: For large models or full fine-tuning
-- deepspeed_stage_2_offload
-- deepspeed_stage_3_offload
+#### 文件处理
+1. 上传小说文件（支持txt格式）
+2. 设置处理参数：
+   - 最小段落长度
+   - 最大段落长度
+   - 是否启用智能分割
+3. 配置AI设置（可选）：
+   - API密钥
+   - API URL（默认支持OpenAI格式）
+   - 模型名称
+   - 自定义指令
+4. 点击"开始处理"
+5. 保存生成的JSONL文件
 
-### 7. FLA Operator
-By default, RWKV-PEFT uses custom CUDA kernels for wkv computation.
-However, you can use `--op fla` to enable the Triton kernel:
-```
---op fla
-```
+#### 段落编辑
+1. 上传已处理的JSONL文件
+2. 查看段落统计信息
+3. 选择需要编辑的段落
+4. 执行操作：
+   - 删除选中段落
+   - AI重新生成关键词
+   - 编辑段落内容
+5. 保存修改后的文件
 
-## GPU Support
+### 数据格式转换
+1. 确保已有JSONL数据
+2. 设置输出文件名和路径
+3. 选择分词器类型
+4. 点击"转换为BinIdx"
+5. 下载生成的.bin和.idx文件
 
-- NVIDIA: CUDA
-- Intel, Moore Threads, Musa, Iluvatar CoreX: FLA, which means you need to pass `--fla`
-- Ascend: CANN (soon)
+## API配置
 
-## Citation
+### 支持的API类型
+- OpenAI API
+- DeepSeek API
+- vLLM服务
+- 其他OpenAI兼容的API服务
 
-If you find this project helpful, please cite our work:
-```bib
-@misc{kang2025dishadimensionshardingadaptationlarge,
-      title={DiSHA: Dimension-Sharding Adaptation of Large Language Models with Fast Convergence and Fast Computation}, 
-      author={Jiale Kang},
-      year={2025},
-      eprint={2409.15371},
-      archivePrefix={arXiv},
-      primaryClass={cs.CL},
-      url={https://arxiv.org/abs/2409.15371}, 
-}
+### 配置示例
+
+**OpenAI API：**
+- API URL: `https://api.openai.com/v1/chat/completions`
+- 模型: `gpt-3.5-turbo` 或 `gpt-4`
+
+**vLLM服务：**
+- API URL: `http://localhost:8000/v1/chat/completions`
+- 模型: 根据vLLM服务配置的模型名称
+
+**DeepSeek API：**
+- API URL: `https://api.deepseek.com/v1/chat/completions`
+- 模型: `deepseek-chat`
+
+## 注意事项
+
+1. **文件格式**：确保输入文件为UTF-8编码
+2. **API密钥**：使用AI功能时需要有效的API密钥
+3. **内存使用**：处理大文件时注意内存使用情况
+4. **输出路径**：确保输出路径有写入权限
+
+## 故障排除
+
+### 常见问题
+
+1. **ModuleNotFoundError**：
+   - 确保已安装所有依赖包
+   - 运行 `pip install -r requirements.txt`
+
+2. **文件路径错误**：
+   - 确保json2binidx_tool目录存在
+   - 检查词汇文件路径
+
+3. **API调用失败**：
+   - 检查API密钥是否正确
+   - 确认API URL格式正确
+   - 检查网络连接
+
+4. **转换失败**：
+   - 确保JSONL格式正确
+   - 检查输出路径权限
+
+## 贡献
+
+欢迎提交Issue和Pull Request来改进这个项目。
+
+## 许可证
+
+本项目采用MIT许可证。
