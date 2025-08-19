@@ -16,6 +16,9 @@ if __name__ == "__main__":
     import json
     from rwkvt.args_type import TrainingArgs
     from rwkvt.dataset.dataset import get_data_by_l_version, get_vocab_size
+    # 1. 导入TensorBoardLogger
+    from lightning.pytorch.loggers import TensorBoardLogger
+    
     rank_zero_info("########## work in progress ##########")
 
     parser = ArgumentParser()
@@ -164,13 +167,20 @@ if __name__ == "__main__":
     args.my_timestamp = datetime.datetime.today().strftime("%Y-%m-%d-%H-%M-%S")
     args.enable_checkpointing = False
     args.replace_sampler_ddp = False
-    args.logger = False
+    args.logger = True
+    args.log_every_n_steps = 50  # 每50步记录一次日志
     args.gradient_clip_val = 1.0
     args.num_sanity_val_steps = 0
     args.check_val_every_n_epoch = int(1e20)
     args.log_every_n_steps = int(1e20)
       # continue forever
     args.max_epochs = args.epoch_count
+    # 2. 创建TensorBoardLogger实例
+    tb_logger = TensorBoardLogger(
+        save_dir=args.proj_dir,
+        name="tb_logs",
+        version=args.my_timestamp
+    )
     if args.dataload =='get':
         args.max_epochs = -1
     args.betas = (args.beta1, args.beta2)
@@ -308,6 +318,10 @@ if __name__ == "__main__":
     else:
         args.precision = "bf16"
 
+    # 在创建Trainer前添加日志信息
+    rank_zero_info(f"TensorBoard logs will be saved to: {tb_logger.log_dir}")
+    rank_zero_info(f"View with: tensorboard --logdir={os.path.join(args.proj_dir, 'tb_logs')}")
+
     ########################################################################################################
 
     from rwkvt.lightning_train.trainer import train_callback
@@ -318,12 +332,14 @@ if __name__ == "__main__":
 
     if pl.__version__[0]=='2':
         trainer = Trainer(accelerator=args.accelerator,strategy=args.strategy,devices=args.devices,num_nodes=args.num_nodes,precision=args.precision,
-        logger=args.logger,callbacks=[train_callback(args)],max_epochs=args.max_epochs,check_val_every_n_epoch=args.check_val_every_n_epoch,num_sanity_val_steps=args.num_sanity_val_steps,
+        logger=tb_logger,callbacks=[train_callback(args)],max_epochs=args.max_epochs,check_val_every_n_epoch=args.check_val_every_n_epoch,num_sanity_val_steps=args.num_sanity_val_steps,
         log_every_n_steps=args.log_every_n_steps,enable_checkpointing=args.enable_checkpointing,accumulate_grad_batches=args.accumulate_grad_batches,gradient_clip_val=args.gradient_clip_val)
     else:
         trainer = Trainer.from_argparse_args(
             args,
+            logger=tb_logger,
             callbacks=[train_callback(args)],
+            log_every_n_steps=args.log_every_n_steps,
         )
 
  
