@@ -12,3 +12,4 @@ wandb
 gradio>=4.0.0
 jieba
 requests
+tensorboard
