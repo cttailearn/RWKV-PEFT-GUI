@@ -168,7 +168,7 @@ if __name__ == "__main__":
     args.enable_checkpointing = False
     args.replace_sampler_ddp = False
     args.logger = True
-    args.log_every_n_steps = 50  # 每50步记录一次日志
+    args.log_every_n_steps = 10  # 每10步记录一次日志
     args.gradient_clip_val = 1.0
     args.num_sanity_val_steps = 0
     args.check_val_every_n_epoch = int(1e20)
